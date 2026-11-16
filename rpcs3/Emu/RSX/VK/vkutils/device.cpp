@@ -548,9 +548,11 @@ namespace vk
 		// Both drivers therefore fall back to thread::begin_conditional_rendering, which is what
 		// desktop already does wherever the extension is absent.
 		if (optional_features_support.conditional_rendering &&
-			(get_driver_vendor() == driver_vendor::ADRENO || get_driver_vendor() == driver_vendor::TURNIP))
+			(get_driver_vendor() == driver_vendor::ADRENO ||
+			 get_driver_vendor() == driver_vendor::TURNIP ||
+			 get_driver_vendor() == driver_vendor::POWERVR))
 		{
-			rsx_log.notice("Conditional rendering disabled: unreliable on this driver (device loss on Turnip, unbounded render pass allocations on Adreno).");
+			rsx_log.notice("Conditional rendering disabled: unreliable/suboptimal on this mobile tiler driver.");
 			optional_features_support.conditional_rendering = false;
 		}
 	}

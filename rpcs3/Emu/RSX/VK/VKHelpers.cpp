@@ -126,6 +126,7 @@ namespace vk
 		const auto cond_render_vendor = g_render_device->gpu().get_driver_vendor();
 		const bool cond_render_blocked_by_driver =
 			cond_render_vendor == vk::driver_vendor::ADRENO ||
+			cond_render_vendor == vk::driver_vendor::POWERVR ||
 #ifdef __APPLE__
 			cond_render_vendor == vk::driver_vendor::TURNIP ||
 			// MoltenVK never builds the predicate buffer, so emulating it would discard every draw
