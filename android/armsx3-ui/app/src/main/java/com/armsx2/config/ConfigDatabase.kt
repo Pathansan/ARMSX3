@@ -148,13 +148,6 @@ object ConfigDatabase {
         "BLES02136" to "Video:\n  Shader Precision: High\n",
         "BLJS10257" to "Video:\n  Shader Precision: High\n",
 
-        // Asura's Wrath (Unreal Engine 3): Shader Precision High and Write Color Buffers true
-        // to prevent UE3 post-processing/lighting flicker and precision artifacts on mobile GPUs
-        // (verified on Pixel 10 Pro XL / PowerVR D-Series DXT-48-1536).
-        "BLUS30721" to "Video:\n  Shader Precision: High\n  Write Color Buffers: true\n",
-        "BLES01227" to "Video:\n  Shader Precision: High\n  Write Color Buffers: true\n",
-        "BLJM60303" to "Video:\n  Shader Precision: High\n  Write Color Buffers: true\n",
-
         // Helldivers: the database forces the PPU interpreter because the recompiler hung it on a
         // black screen (RPCS3 issue #5831). The hang was LuaJIT's integer arithmetic on
         // mullwo./subfo. and bso, whose overflow flag the recompiler never set correctly; fixed in
