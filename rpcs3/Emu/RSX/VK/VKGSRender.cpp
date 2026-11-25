@@ -595,10 +595,15 @@ VKGSRender::VKGSRender(rsx::context* ctx, rsx::display_output* output) noexcept 
 	// attribute ring through vertex input bindings, so only then does the ring need that usage.
 	const bool vspec_on = vk::vspec::activate(g_cfg.video.vk.vertex_fetch_specialization.get(), *m_device,
 		vk::get_heap_compatible_buffer_types());
-	const VkBufferUsageFlags attrib_ring_usage =
-		VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-		(vk::use_ssbo_attrib_stream() ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0u) |
-		(vspec_on ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : 0u);
+	VkBufferUsageFlags attrib_ring_usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+	if (vk::use_ssbo_attrib_stream())
+	{
+		attrib_ring_usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	}
+	if (vspec_on)
+	{
+		attrib_ring_usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	}
 
 	// VRAM allocation
 	// This first set is bound persistently, so grow notifications are enabled.
