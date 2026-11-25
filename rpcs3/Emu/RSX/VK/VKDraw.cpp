@@ -1184,8 +1184,16 @@ void VKGSRender::emit_geometry(u32 sub_index)
 
 	if (update_descriptors)
 	{
-		m_program->bind_uniform(persistent_buffer, vk::glsl::binding_set_index_vertex, m_vs_binding_table->vertex_buffers_location);
-		m_program->bind_uniform(volatile_buffer, vk::glsl::binding_set_index_vertex, m_vs_binding_table->vertex_buffers_location + 1);
+		if (vk::use_ssbo_attrib_stream())
+		{
+			m_program->bind_uniform(m_persistent_attrib_buffer_info, vk::glsl::binding_set_index_vertex, m_vs_binding_table->vertex_buffers_location);
+			m_program->bind_uniform(m_volatile_attrib_buffer_info, vk::glsl::binding_set_index_vertex, m_vs_binding_table->vertex_buffers_location + 1);
+		}
+		else
+		{
+			m_program->bind_uniform(persistent_buffer, vk::glsl::binding_set_index_vertex, m_vs_binding_table->vertex_buffers_location);
+			m_program->bind_uniform(volatile_buffer, vk::glsl::binding_set_index_vertex, m_vs_binding_table->vertex_buffers_location + 1);
+		}
 	}
 
 	bool reload_state = (!m_current_draw.subdraw_id++);

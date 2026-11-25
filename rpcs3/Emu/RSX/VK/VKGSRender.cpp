@@ -595,9 +595,10 @@ VKGSRender::VKGSRender(rsx::context* ctx, rsx::display_output* output) noexcept 
 	// attribute ring through vertex input bindings, so only then does the ring need that usage.
 	const bool vspec_on = vk::vspec::activate(g_cfg.video.vk.vertex_fetch_specialization.get(), *m_device,
 		vk::get_heap_compatible_buffer_types());
-	const VkBufferUsageFlags attrib_ring_usage = vspec_on
-		? (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
-		: VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+	const VkBufferUsageFlags attrib_ring_usage =
+		VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+		(vk::use_ssbo_attrib_stream() ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0u) |
+		(vspec_on ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : 0u);
 
 	// VRAM allocation
 	// This first set is bound persistently, so grow notifications are enabled.
@@ -662,9 +663,13 @@ VKGSRender::VKGSRender(rsx::context* ctx, rsx::display_output* output) noexcept 
 	m_raster_env_buffer_info = { *m_raster_env_ring_info.heap, 0, VK_WHOLE_SIZE };
 	m_vertex_layout_stream_info = { *m_vertex_layout_ring_info.heap, 0, VK_WHOLE_SIZE };
 	m_fragment_constants_buffer_info = { *m_fragment_constants_ring_info.heap, 0, VK_WHOLE_SIZE };
+	m_persistent_attrib_buffer_info = { *m_attrib_ring_info.heap, 0, VK_WHOLE_SIZE };
+	m_volatile_attrib_buffer_info = { *m_attrib_ring_info.heap, 0, VK_WHOLE_SIZE };
 
 	const auto& limits = m_device->gpu().get_limits();
-	m_texbuffer_view_size = std::min(limits.maxTexelBufferElements, VK_ATTRIB_RING_BUFFER_SIZE_M * 0x100000u);
+	m_texbuffer_view_size = vk::use_ssbo_attrib_stream()
+		? std::min<u32>(limits.maxStorageBufferRange, VK_ATTRIB_RING_BUFFER_SIZE_M * 0x100000u)
+		: std::min(limits.maxTexelBufferElements, VK_ATTRIB_RING_BUFFER_SIZE_M * 0x100000u);
 
 	// Initialize bulk allocators
 	m_vertex_env_allocator = std::make_unique<rsx::data_heap::bulk_allocator<256, 96>>(
@@ -3138,12 +3143,15 @@ void VKGSRender::update_vertex_env(u32 id, const vk::vertex_upload_info& vertex_
 					const u32 y = static_cast<u32>(attrib_local[i * 2 + 1]);
 					const bool is_volatile = (y >> 30) & 1;
 					const auto& view = is_volatile ? m_volatile_attribute_storage : m_persistent_attribute_storage;
-					if (!view || !vk::vspec::native_capable(x, y, view->info.offset))
+					const usz base_offset = vk::use_ssbo_attrib_stream()
+						? (is_volatile ? m_volatile_attrib_buffer_info.offset : m_persistent_attrib_buffer_info.offset)
+						: (view ? view->info.offset : 0);
+					if ((!vk::use_ssbo_attrib_stream() && !view) || !vk::vspec::native_capable(x, y, base_offset))
 					{
 						continue;
 					}
 
-					m_vin_offsets[i] = view->info.offset + (y & 0x1FFFFFFF);
+					m_vin_offsets[i] = base_offset + (y & 0x1FFFFFFF);
 					m_vin_native_mask |= (1u << i);
 				}
 

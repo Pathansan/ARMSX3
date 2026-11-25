@@ -338,14 +338,29 @@ void VKVertexDecompilerThread::insertInputs(std::stringstream& OS, const std::ve
 	};
 
 	u32 location = vk_prog->binding_table.vertex_buffers_location;
+	const bool ssbo_attrib = vk::use_ssbo_attrib_stream();
+	if (ssbo_attrib)
+	{
+		OS << "#define _USE_SSBO_ATTRIB_STREAM\n";
+	}
 	for (const auto& stream : input_streams)
 	{
-		OS << "layout(set=0, binding=" << location << ") uniform usamplerBuffer " << stream << ";\n";
+		if (ssbo_attrib)
+		{
+			OS << "layout(std430, set=0, binding=" << location << ") readonly restrict buffer " << stream << "_buf\n"
+			   << "{\n"
+			   << "	uint " << stream << "_data[];\n"
+			   << "};\n";
+		}
+		else
+		{
+			OS << "layout(set=0, binding=" << location << ") uniform usamplerBuffer " << stream << ";\n";
+		}
 
 		this->inputs.push_back(vk::glsl::program_input
 		{
 			.domain = glsl::glsl_vertex_program,
-			.type = vk::glsl::input_type_texel_buffer,
+			.type = ssbo_attrib ? vk::glsl::input_type_storage_buffer : vk::glsl::input_type_texel_buffer,
 			.set = vk::glsl::binding_set_index_vertex,
 			.location = location++,
 			.name = stream

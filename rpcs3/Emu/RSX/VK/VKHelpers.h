@@ -69,6 +69,7 @@ namespace vk
 	bool emulate_extended_depth_range();
 	bool use_strict_query_scopes();
 	bool force_reuse_query_pools();
+	bool use_ssbo_attrib_stream();
 	VkFlags get_heap_compatible_buffer_types();
 
 	// Sync helpers around vkQueueSubmit

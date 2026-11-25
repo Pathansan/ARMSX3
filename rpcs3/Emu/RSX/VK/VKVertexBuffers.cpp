@@ -342,34 +342,65 @@ vk::vertex_upload_info VKGSRender::upload_vertex_data()
 		m_raster_env_buffer_info = { *m_raster_env_ring_info.heap, 0, VK_WHOLE_SIZE };
 		m_vertex_layout_stream_info = { *m_vertex_layout_ring_info.heap, 0, VK_WHOLE_SIZE };
 		m_fragment_constants_buffer_info = { *m_fragment_constants_ring_info.heap, 0, VK_WHOLE_SIZE };
+		m_persistent_attrib_buffer_info = { *m_attrib_ring_info.heap, 0, VK_WHOLE_SIZE };
+		m_volatile_attrib_buffer_info = { *m_attrib_ring_info.heap, 0, VK_WHOLE_SIZE };
 
 		vk::clear_status_interrupt(vk::heap_changed);
 	}
 
-	if (persistent_range_base != umax)
+	if (vk::use_ssbo_attrib_stream())
 	{
-		if (!m_persistent_attribute_storage || !m_persistent_attribute_storage->in_range(persistent_range_base, required.first, persistent_range_base))
+		auto update_ssbo_stream = [&](VkDescriptorBufferInfo& info, u32& range_base, u32 req_size)
 		{
-			ensure(m_texbuffer_view_size >= required.first); // "Incompatible driver (MacOS?)"
-			vk::get_resource_manager()->dispose(m_persistent_attribute_storage);
+			if (range_base == umax)
+			{
+				return;
+			}
+			const bool in_range = (info.buffer == m_attrib_ring_info.heap->value) &&
+				(info.range != VK_WHOLE_SIZE) &&
+				(range_base >= info.offset) &&
+				((static_cast<usz>(range_base) + req_size) <= (info.offset + info.range));
+			if (!in_range)
+			{
+				ensure(m_texbuffer_view_size >= req_size);
+				const usz view_size = (static_cast<usz>(range_base) + m_texbuffer_view_size) > m_attrib_ring_info.size()
+					? m_attrib_ring_info.size() - range_base
+					: m_texbuffer_view_size;
+				info = { m_attrib_ring_info.heap->value, range_base, view_size };
+			}
+			range_base = static_cast<u32>(range_base - info.offset);
+		};
 
-			//View 64M blocks at a time (different drivers will only allow a fixed viewable heap size, 64M should be safe)
-			const usz view_size = (persistent_range_base + m_texbuffer_view_size) > m_attrib_ring_info.size() ? m_attrib_ring_info.size() - persistent_range_base : m_texbuffer_view_size;
-			m_persistent_attribute_storage = std::make_unique<vk::buffer_view>(*m_device, m_attrib_ring_info.heap->value, VK_FORMAT_R8_UINT, persistent_range_base, view_size);
-			persistent_range_base = 0;
-		}
+		update_ssbo_stream(m_persistent_attrib_buffer_info, persistent_range_base, required.first);
+		update_ssbo_stream(m_volatile_attrib_buffer_info, volatile_range_base, required.second);
 	}
-
-	if (volatile_range_base != umax)
+	else
 	{
-		if (!m_volatile_attribute_storage || !m_volatile_attribute_storage->in_range(volatile_range_base, required.second, volatile_range_base))
+		if (persistent_range_base != umax)
 		{
-			ensure(m_texbuffer_view_size >= required.second); // "Incompatible driver (MacOS?)"
-			vk::get_resource_manager()->dispose(m_volatile_attribute_storage);
+			if (!m_persistent_attribute_storage || !m_persistent_attribute_storage->in_range(persistent_range_base, required.first, persistent_range_base))
+			{
+				ensure(m_texbuffer_view_size >= required.first); // "Incompatible driver (MacOS?)"
+				vk::get_resource_manager()->dispose(m_persistent_attribute_storage);
 
-			const usz view_size = (volatile_range_base + m_texbuffer_view_size) > m_attrib_ring_info.size() ? m_attrib_ring_info.size() - volatile_range_base : m_texbuffer_view_size;
-			m_volatile_attribute_storage = std::make_unique<vk::buffer_view>(*m_device, m_attrib_ring_info.heap->value, VK_FORMAT_R8_UINT, volatile_range_base, view_size);
-			volatile_range_base = 0;
+				//View 64M blocks at a time (different drivers will only allow a fixed viewable heap size, 64M should be safe)
+				const usz view_size = (persistent_range_base + m_texbuffer_view_size) > m_attrib_ring_info.size() ? m_attrib_ring_info.size() - persistent_range_base : m_texbuffer_view_size;
+				m_persistent_attribute_storage = std::make_unique<vk::buffer_view>(*m_device, m_attrib_ring_info.heap->value, VK_FORMAT_R8_UINT, persistent_range_base, view_size);
+				persistent_range_base = 0;
+			}
+		}
+
+		if (volatile_range_base != umax)
+		{
+			if (!m_volatile_attribute_storage || !m_volatile_attribute_storage->in_range(volatile_range_base, required.second, volatile_range_base))
+			{
+				ensure(m_texbuffer_view_size >= required.second); // "Incompatible driver (MacOS?)"
+				vk::get_resource_manager()->dispose(m_volatile_attribute_storage);
+
+				const usz view_size = (volatile_range_base + m_texbuffer_view_size) > m_attrib_ring_info.size() ? m_attrib_ring_info.size() - volatile_range_base : m_texbuffer_view_size;
+				m_volatile_attribute_storage = std::make_unique<vk::buffer_view>(*m_device, m_attrib_ring_info.heap->value, VK_FORMAT_R8_UINT, volatile_range_base, view_size);
+				volatile_range_base = 0;
+			}
 		}
 	}
 

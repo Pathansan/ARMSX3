@@ -43,6 +43,7 @@ namespace vk
 	bool g_drv_emulate_cond_render = false;
 	bool g_drv_strict_query_scopes = false;
 	bool g_drv_force_reuse_query_pools = false;
+	bool g_drv_use_ssbo_attrib_stream = false;
 
 	u64 g_num_processed_frames = 0;
 	u64 g_num_total_frames = 0;
@@ -276,6 +277,15 @@ namespace vk
 			}
 		}
 
+		g_drv_use_ssbo_attrib_stream =
+			(gpu.get_limits().maxTexelBufferElements < 0x800000) &&
+			((g_heap_compatible_buffer_types & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0);
+		if (g_drv_use_ssbo_attrib_stream)
+		{
+			rsx_log.notice("Using SSBO vertex attribute stream (maxTexelBufferElements=%u < 8M).",
+				gpu.get_limits().maxTexelBufferElements);
+		}
+
 		descriptors::init();
 	}
 
@@ -334,6 +344,11 @@ namespace vk
 	bool force_reuse_query_pools()
 	{
 		return g_drv_force_reuse_query_pools;
+	}
+
+	bool use_ssbo_attrib_stream()
+	{
+		return g_drv_use_ssbo_attrib_stream;
 	}
 
 	void raise_status_interrupt(runtime_state status)

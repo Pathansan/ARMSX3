@@ -100,6 +100,8 @@ private:
 
 	std::unique_ptr<vk::buffer_view> m_persistent_attribute_storage;
 	std::unique_ptr<vk::buffer_view> m_volatile_attribute_storage;
+	VkDescriptorBufferInfo m_persistent_attrib_buffer_info{};
+	VkDescriptorBufferInfo m_volatile_attrib_buffer_info{};
 
 	VkDependencyInfoKHR m_async_compute_dependency_info {};
 	VkMemoryBarrier2KHR m_async_compute_memory_barrier {};

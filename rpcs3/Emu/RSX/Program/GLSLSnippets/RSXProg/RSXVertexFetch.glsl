@@ -72,7 +72,20 @@ float sext(const in int bits)
 	return (bits < 0x8000) ? float(bits) : float(bits - 65536); 
 }
 
+#ifdef _USE_SSBO_ATTRIB_STREAM
+uint fetch_attrib_byte(const in bool is_volatile, const in int byte_offset)
+{
+	const uint word = is_volatile
+		? volatile_input_stream_data[uint(byte_offset) >> 2u]
+		: persistent_input_stream_data[uint(byte_offset) >> 2u];
+	return (word >> ((uint(byte_offset) & 3u) * 8u)) & 0xFFu;
+}
+#define _fetch_attrib_u8(idx) fetch_attrib_byte(desc.is_volatile, idx)
+vec4 fetch_attribute(const in attribute_desc desc, const in int vertex_id)
+#else
+#define _fetch_attrib_u8(idx) texelFetch(input_stream, idx).x
 vec4 fetch_attribute(const in attribute_desc desc, const in int vertex_id, usamplerBuffer input_stream)
+#endif
 {
 	const int elem_size_table[] = { 0, 2, 4, 2, 1, 2, 4, 1 };
 	const float scaling_table[] = { 1., 32767.5, 1., 1., 255., 1., 32767., 1. };
@@ -85,17 +98,17 @@ vec4 fetch_attribute(const in attribute_desc desc, const in int vertex_id, usamp
 
 	for (n = 0; n < desc.attribute_size; n++)
 	{
-		tmp.x = texelFetch(input_stream, i++).x;
+		tmp.x = _fetch_attrib_u8(i++);
 		if (elem_size == 2)
 		{
-			tmp.y = texelFetch(input_stream, i++).x;
+			tmp.y = _fetch_attrib_u8(i++);
 			tmp.x = gen_bits(tmp.x, tmp.y, desc.swap_bytes);
 		}
 		else if (elem_size == 4)
 		{
-			tmp.y = texelFetch(input_stream, i++).x;
-			tmp.z = texelFetch(input_stream, i++).x;
-			tmp.w = texelFetch(input_stream, i++).x;
+			tmp.y = _fetch_attrib_u8(i++);
+			tmp.z = _fetch_attrib_u8(i++);
+			tmp.w = _fetch_attrib_u8(i++);
 			tmp.x = gen_bits(tmp.x, tmp.y, tmp.z, tmp.w, desc.swap_bytes);
 		}
 
@@ -202,6 +215,9 @@ vec4 read_location(const in int location)
 		vertex_id = (_gl_VertexID - int(vertex_base_index)) / int(desc.frequency); 
 	}
 
+#ifdef _USE_SSBO_ATTRIB_STREAM
+	return fetch_attribute(desc, vertex_id);
+#else
 	if (desc.is_volatile)
 	{
 		return fetch_attribute(desc, vertex_id, volatile_input_stream);
@@ -210,6 +226,7 @@ vec4 read_location(const in int location)
 	{
 		return fetch_attribute(desc, vertex_id, persistent_input_stream);
 	}
+#endif
 }
 
 )"
