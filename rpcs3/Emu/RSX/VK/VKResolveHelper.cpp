@@ -75,15 +75,18 @@ namespace vk
 			}
 
 			const auto vendor = vk::get_driver_vendor();
-			const bool adreno = vendor == vk::driver_vendor::ADRENO || vendor == vk::driver_vendor::TURNIP;
+			const bool tiler_gfx_convert =
+				vendor == vk::driver_vendor::ADRENO ||
+				vendor == vk::driver_vendor::TURNIP ||
+				vendor == vk::driver_vendor::POWERVR;
 
 			// warning, not notice: notice sits below the shipped log level, so this line was
 			// invisible in a capture and whether the gate resolved on had to be inferred from
 			// dispatch counts. A gate you cannot read is a gate you cannot trust.
 			rsx_log.warning("Graphics-pipe texture conversion %s (driver vendor %d).",
-				adreno ? "enabled" : "disabled", static_cast<int>(vendor));
+				tiler_gfx_convert ? "enabled" : "disabled", static_cast<int>(vendor));
 
-			return adreno;
+			return tiler_gfx_convert;
 		}();
 
 		return s_available;

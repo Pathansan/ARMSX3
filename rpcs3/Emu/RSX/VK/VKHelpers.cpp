@@ -223,6 +223,8 @@ namespace vk
 			}
 			break;
 		case driver_vendor::POWERVR:
+			rsx_log.notice("PowerVR mobile tiler detected: %s (conditional rendering disabled, 64KB UBO window)", gpu_name);
+			break;
 		case driver_vendor::XCLIPSE:
 		case driver_vendor::BROADCOM:
 		case driver_vendor::VERISILICON:
